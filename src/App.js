@@ -3,7 +3,7 @@ import './App.css';
 function App() {
   return (
     <div className="App">
-      <h1>Essa é uma aplicação de exemplo</h1>
+      <h1>A pipeline funcionou!!</h1>
     </div>
   );
 }
