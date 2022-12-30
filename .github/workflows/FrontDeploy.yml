@@ -1,0 +1,54 @@
+name: Front Pipeline
+
+on: [push]
+
+env:
+  REMOTE_HOST: "52.207.80.247"
+  REMOTE_USER: "ubuntu"
+
+jobs:
+  build-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout to the repository
+        uses: actions/checkout@v2
+
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-node-modules
+        with:
+          # npm cache files are stored in `~/.npm` on Linux/macOS
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+      
+      - name: Install package dependencies
+        run: npm install
+      
+      - name: Create test build
+        run: npm run build
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/github-actions-key
+          chmod 600 ~/.ssh/github-actions-key
+          cat >>~/.ssh/config <<END
+          Host ec2
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/github-actions-key
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_HOST: ${{ env.REMOTE_HOST }}
+          SSH_USER: ${{ env.REMOTE_USER }}
+          SSH_KEY: ${{ secrets.PRIVATE_KEY }}
+
+      - name: Copy build to the server
+        run: scp -r build/** ec2:/home/ubuntu/app/
